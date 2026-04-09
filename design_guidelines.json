@@ -1,0 +1,94 @@
+{
+  "theme": "Light",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "context": "Enterprise SaaS / Dashboard",
+  "emotions": ["Authority", "Clarity", "Trust", "Objective"],
+  "typography": {
+    "headings": {
+      "family": "Chivo",
+      "import_url": "https://fonts.googleapis.com/css2?family=Chivo:wght@300;400;700;900&display=swap",
+      "weight_strategy": "Radical weight contrast (Black vs Light)",
+      "tracking": "tracking-tight"
+    },
+    "body": {
+      "family": "IBM Plex Sans",
+      "import_url": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl font-black tracking-tighter",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-bold",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-sm",
+      "labels": "text-xs font-medium uppercase tracking-[0.2em]"
+    }
+  },
+  "colors": {
+    "background": "#FFFFFF",
+    "surface": "#F4F4F5",
+    "border": "#E4E4E7",
+    "text_primary": "#09090B",
+    "text_secondary": "#71717A",
+    "primary": "#0055FF",
+    "primary_hover": "#0040CC",
+    "status": {
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "info": "#3B82F6"
+    },
+    "rules": [
+      "95% monochrome UI.",
+      "Color exists only to guide action.",
+      "Never use pure black or grey. Greys should be tinted slightly cool (Zinc)."
+    ]
+  },
+  "layout": {
+    "grid": "Control Room Grid",
+    "spacing": {
+      "base": "gap-4 md:gap-6",
+      "padding": "p-6 md:p-8"
+    },
+    "surfaces": "Grid Borders (The 'Technical' Look). Flat solid background with 1px border. No shadows by default.",
+    "border_radius": "rounded-md"
+  },
+  "components": {
+    "cards": "Flat background, 1px subtle border (border-zinc-200), no shadow. On hover: slight lift (-translate-y-1), subtle shadow (shadow-sm).",
+    "tables": "Minimalist table views. Dense, typography-focused. Use sticky headers. Left-align text/data, right-align numbers.",
+    "buttons": "Primary buttons: bg-[#0055FF] text-white hover:bg-[#0040CC]. Secondary: border border-zinc-200 bg-white hover:bg-zinc-50.",
+    "file_upload": "Drag-and-drop zone: border-2 border-dashed border-zinc-300 bg-zinc-50 hover:bg-zinc-100 transition-colors. Center align icon and text.",
+    "navigation": "Sticky/Fixed header with Crystal Glass (backdrop-blur-xl bg-white/70, 1px bottom border border-white/20). Must have visible links on desktop."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "instructions": "Use lucide-react (already installed). Keep icons functional, minimal."
+  },
+  "motion": {
+    "hover": "Subtle border color change, bg tint, or -translate-y-1 for interactive elements.",
+    "transitions": "transition-all duration-200 ease-in-out"
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/fde3d48c-be5b-4199-b96b-dea8c84ae1e7/images/58d5c869f4c40a2669e77490d79f9691dcfcdc13c3c650429978918e2f2dc2bf.png",
+        "category": "login_background",
+        "description": "Minimalist architectural glass facade for the login screen split-pane."
+      },
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/fde3d48c-be5b-4199-b96b-dea8c84ae1e7/images/9b46ceb496aba676ae01db9a7eedfe1fcc9ef8e9e407c69aea4c44f1fdb6bbc3.png",
+        "category": "abstract_data_illustration",
+        "description": "Abstract geometric data mapping illustration, can be used in empty states or onboarding."
+      }
+    ],
+    "rules": "Never use placeholder images. Use provided URLs only."
+  },
+  "instructions_to_main_agent": [
+    "Follow the exact component specifications listed above.",
+    "Ensure all interactive and key informational elements MUST include a data-testid attribute (e.g., data-testid='upload-dropzone', data-testid='login-submit-button').",
+    "Implement Shadcn components heavily for Tables, Tabs, Dialogs, Select, Forms.",
+    "Do NOT use pure transparent backgrounds for the sticky header; use backdrop-blur and semi-transparent white.",
+    "Ensure the table handles editable data (Data Correction Screen) cleanly without visual clutter.",
+    "Use Chivo for all Headings (H1-H4) and IBM Plex Sans for body text and table data. Import these from Google Fonts.",
+    "Prioritize accessibility: ensure text contrast ratio is APCA/WCAG compliant."
+  ]
+}
