@@ -152,6 +152,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Health check endpoint (public)
+@api_router.get("/health")
+async def health():
+    return {"status": "healthy", "service": "gmc-platform"}
+
 # ==================== AUTH ENDPOINTS ====================
 @api_router.post("/auth/register")
 async def register(data: UserCreate, response: Response):
@@ -1060,7 +1065,3 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     client.close()
-
-@api_router.get("/health")
-async def health():
-    return {"status": "healthy"}
