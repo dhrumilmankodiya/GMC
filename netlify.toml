@@ -1,12 +1,11 @@
 [build]
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
   publish = "frontend/build"
-  directory = "frontend"
+  base = "."
 
 [build.environment]
   NODE_VERSION = "22"
   NPM_VERSION = "10"
-  YARN_ENABLED = "false"
 
 [[redirects]]
   from = "/*"
