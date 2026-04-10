@@ -1043,8 +1043,9 @@ async def startup():
         logger.info("Admin password updated")
     
     # Write test credentials
-    Path("/app/memory").mkdir(exist_ok=True)
-    with open("/app/memory/test_credentials.md", "w") as f:
+    creds_dir = Path("./memory")
+    creds_dir.mkdir(exist_ok=True)
+    with open(creds_dir / "test_credentials.md", "w") as f:
         f.write(f"""# Test Credentials
 
 ## Admin Account
@@ -1065,3 +1066,7 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     client.close()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
