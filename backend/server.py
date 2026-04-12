@@ -143,10 +143,10 @@ async def require_role(request: Request, roles: List[str]) -> dict:
 app = FastAPI(title="GMC Platform API")
 api_router = APIRouter(prefix="/api")
 
-# CORS
+# CORS - use regex patterns to allow subdomains with credentials
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.environ.get("FRONTEND_URL", "http://localhost:3000")],
+    allow_origin_regex=r"https://.*\.netlify\.app|https://.*\.trycloudflare\.com|https://.*\.loca\.lt|http://localhost:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -179,12 +179,14 @@ async def register(data: UserCreate, response: Response):
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+    # Remove domain from cookie to work with any domain (cloudflare, localtunnel, etc.)
+    # secure=True required when samesite=none for modern browsers
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
     
     await log_audit("user_registered", user_id, {"email": email, "role": user_doc["role"]})
     
-    return {"id": user_id, "email": email, "name": data.name, "role": user_doc["role"], "created_at": user_doc["created_at"]}
+    return {"id": user_id, "email": email, "name": data.name, "role": user_doc["role"], "created_at": user_doc["created_at"], "access_token": access_token}
 
 @api_router.post("/auth/login")
 async def login(data: UserLogin, response: Response, request: Request):
@@ -219,18 +221,20 @@ async def login(data: UserLogin, response: Response, request: Request):
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
     
     await log_audit("user_login", user_id, {"email": email})
     
-    return {"id": user_id, "email": email, "name": user["name"], "role": user["role"], "created_at": user.get("created_at", "")}
+    # Also return token in response for API clients
+    return {"id": user_id, "email": email, "name": user["name"], "role": user["role"], "created_at": user.get("created_at", ""), "access_token": access_token}
 
 @api_router.post("/auth/logout")
 async def logout(response: Response, request: Request):
     user = await get_current_user(request)
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    # Remove cookies without domain to work with any domain
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
     await log_audit("user_logout", user["id"], {})
     return {"message": "Logged out successfully"}
 
@@ -254,8 +258,10 @@ async def refresh_token(request: Request, response: Response):
         
         user_id = str(user["_id"])
         access_token = create_access_token(user_id, user["email"])
-        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
-        return {"message": "Token refreshed"}
+        # Set cookie without domain to work with any domain
+        # secure=True required when samesite=none for modern browsers
+        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+        return {"message": "Token refreshed", "access_token": access_token}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")
     except jwt.InvalidTokenError:

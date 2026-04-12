@@ -5,7 +5,7 @@ const AuthContext = createContext(null);
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Configure axios defaults
+// Configure axios defaults - use cookies for auth
 axios.defaults.withCredentials = true;
 
 function formatApiErrorDetail(detail) {

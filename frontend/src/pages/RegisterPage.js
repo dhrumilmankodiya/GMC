@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -9,6 +9,7 @@ import { User, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,7 +28,10 @@ export default function RegisterPage() {
 
     setLoading(true);
     const result = await register(email, password, name, role);
-    if (!result.success) {
+    if (result.success) {
+      // Navigate to dashboard on successful registration
+      navigate('/dashboard');
+    } else {
       setError(result.error);
     }
     setLoading(false);

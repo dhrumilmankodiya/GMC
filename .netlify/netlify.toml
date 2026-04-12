@@ -1,0 +1,50 @@
+headersOrigin = "config"
+redirectsOrigin = "config"
+plugins = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "/tmp/gmc_project/frontend/build"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+base = "/tmp/gmc_project"
+
+[build.environment]
+NODE_VERSION = "22"
+NPM_VERSION = "10"
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+X-Frame-Options = "DENY"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
