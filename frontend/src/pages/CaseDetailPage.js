@@ -22,6 +22,8 @@ import {
   Upload,
   Eye,
   Edit,
+  Sparkles,
+  ArrowUpRight,
 } from 'lucide-react';
 
 const statusConfig = {
@@ -150,6 +152,17 @@ export default function CaseDetailPage() {
                 <nextAction.icon className="w-4 h-4 mr-2" />
                 {nextAction.label}
                 <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          )}
+
+          {/* Underwriting Hub CTA */}
+          {(isUnderwriter || isAdmin) && caseData?.status === 'submitted' && (
+            <Link to={`/cases/${caseId}/underwriting`}>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2">
+                <Sparkles className="w-4 h-4" />
+                Open Underwriting Hub
+                <ArrowUpRight className="w-4 h-4" />
               </Button>
             </Link>
           )}

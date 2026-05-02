@@ -16,6 +16,7 @@ import DataCorrectionPage from "./pages/DataCorrectionPage";
 import StructuredReviewPage from "./pages/StructuredReviewPage";
 import UnderwriterQueuePage from "./pages/UnderwriterQueuePage";
 import UnderwriterReviewPage from "./pages/UnderwriterReviewPage";
+import UnderwritingHubPage from "./pages/UnderwritingHubPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import TemplateManagerPage from "./pages/TemplateManagerPage";
@@ -86,6 +87,7 @@ function AppRoutes() {
       {/* Underwriter Routes */}
       <Route path="/underwriter/queue" element={<ProtectedRoute allowedRoles={['underwriter', 'admin']}><UnderwriterQueuePage /></ProtectedRoute>} />
       <Route path="/underwriter/cases/:caseId" element={<ProtectedRoute allowedRoles={['underwriter', 'admin']}><UnderwriterReviewPage /></ProtectedRoute>} />
+      <Route path="/cases/:caseId/underwriting" element={<ProtectedRoute allowedRoles={['underwriter', 'admin', 'agent']}><UnderwritingHubPage /></ProtectedRoute>} />
 
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboardPage /></ProtectedRoute>} />

@@ -1012,6 +1012,537 @@ async def get_recent_activity(request: Request):
     activities = await db.audit_logs.find(query, {"_id": 0}).sort("timestamp", -1).limit(10).to_list(10)
     return {"activities": activities}
 
+# ==================== UNDERWRITING INTELLIGENCE ====================
+
+# Pydantic Models for Underwriting
+class RiskFactor(BaseModel):
+    factor: str
+    impact: str
+    severity: str
+
+class PremiumLoading(BaseModel):
+    reason: str
+    loading_percent: float
+
+class PlanOption(BaseModel):
+    name: str
+    coverage: str
+    premium: float
+    features: List[str]
+    suited_for: str
+
+class KeyStats(BaseModel):
+    total_members: int
+    average_age: float
+    age_range: str
+    total_sum_insured: float
+    premium_per_member: float
+    loss_ratio: float
+    risk_band: str
+    gender_split: Dict[str, int]
+    dependents_ratio: float
+
+class RiskProfile(BaseModel):
+    risk_score: int
+    risk_band: str
+    risk_factors: List[RiskFactor]
+    premium_loadings: List[PremiumLoading]
+
+class PremiumCalculation(BaseModel):
+    base_premium: float
+    loading_percent: float
+    loading_amount: float
+    admin_fee: float
+    final_premium: float
+    premium_per_member: float
+    brokerage_percent: float
+    net_premium: float
+
+class UnderwritingSummary(BaseModel):
+    key_stats: KeyStats
+    risk_profile: RiskProfile
+    premium_calculation: PremiumCalculation
+    plan_options: List[PlanOption]
+    underwriting_notes: str
+    generated_at: str
+    confidence: int
+
+class QuotationResponse(BaseModel):
+    quotation_id: str
+    plan_name: str
+    premium: float
+    valid_until: str
+    pdf_url: Optional[str] = None
+
+
+def calculate_rule_based_underwriting(enrollment_data: List[Dict], sum_insured: float, member_count: int) -> Dict:
+    """Rule-based underwriting calculation from actual enrollment data"""
+    
+    if not enrollment_data:
+        # Default fallback
+        return _get_default_underwriting()
+    
+    ages = []
+    genders = {"male": 0, "female": 0}
+    dependents = 0
+    total_members = len(enrollment_data)
+    pre_existing_conditions = 0
+    
+    for member in enrollment_data:
+        # Extract age from date_of_birth
+        dob = member.get("date_of_birth") or member.get("dob")
+        if dob:
+            try:
+                if isinstance(dob, str):
+                    birth = datetime.strptime(dob[:10], "%Y-%m-%d")
+                else:
+                    birth = dob
+                age = (datetime.now() - birth).days // 365
+                ages.append(age)
+            except:
+                ages.append(35)  # default
+        else:
+            ages.append(35)
+        
+        # Count genders
+        gender = str(member.get("gender", "")).lower()
+        if gender in ["male", "m"]:
+            genders["male"] += 1
+        elif gender in ["female", "f"]:
+            genders["female"] += 1
+        
+        # Count dependents
+        rel = str(member.get("relationship", "")).lower()
+        if rel in ["spouse", "child", "dependent", "mother", "father", "sibling"]:
+            dependents += 1
+        
+        # Check pre-existing conditions
+        pec = member.get("pre_existing_conditions") or member.get("pec") or member.get("illness")
+        if pec and str(pec).lower() not in ["none", "no", "nil", ""]:
+            pre_existing_conditions += 1
+    
+    avg_age = sum(ages) / len(ages) if ages else 35
+    min_age = min(ages) if ages else 24
+    max_age = max(ages) if ages else 62
+    senior_count = sum(1 for a in ages if a >= 55)
+    young_count = sum(1 for a in ages if a < 30)
+    
+    # Calculate risk score (base 40, add factors)
+    risk_score = 40
+    risk_factors = []
+    premium_loadings = []
+    
+    # Age factor
+    if senior_count > 0:
+        impact = min(senior_count * 3, 20)
+        risk_score += impact
+        risk_factors.append({
+            "factor": f"{senior_count} members in age group 55+",
+            "impact": f"+{int(impact)}",
+            "severity": "medium" if senior_count < 10 else "high"
+        })
+    
+    # Young healthy bonus
+    if young_count > total_members * 0.5:
+        risk_score -= 10
+        risk_factors.append({
+            "factor": "Majority young workforce under 30",
+            "impact": "-10",
+            "severity": "low"
+        })
+    
+    # Pre-existing conditions
+    if pre_existing_conditions > 0:
+        impact = pre_existing_conditions * 10
+        risk_score += impact
+        risk_factors.append({
+            "factor": f"{pre_existing_conditions} members with pre-existing conditions",
+            "impact": f"+{int(impact)}",
+            "severity": "medium" if pre_existing_conditions < 5 else "high"
+        })
+        premium_loadings.append({
+            "reason": "Pre-existing conditions",
+            "loading_percent": min(pre_existing_conditions * 2, 15)
+        })
+    
+    # Dependents ratio
+    dep_ratio = dependents / total_members if total_members > 0 else 0
+    if dep_ratio > 0.5:
+        risk_score += 5
+        risk_factors.append({
+            "factor": f"High dependents ratio ({dep_ratio:.0%})",
+            "impact": "+5",
+            "severity": "low"
+        })
+    
+    # Determine risk band
+    if risk_score < 40:
+        risk_band = "Low"
+    elif risk_score < 60:
+        risk_band = "Medium"
+    else:
+        risk_band = "High"
+    
+    # Calculate premiums
+    base_rate = 0.02  # 2% of sum insured base rate
+    age_factor = 1 + (avg_age - 30) * 0.015  # Age loading
+    base_premium = sum_insured * base_rate * age_factor
+    
+    # Apply loadings
+    loading_pct = sum(l["loading_percent"] for l in premium_loadings)
+    loading_amount = base_premium * (loading_pct / 100)
+    admin_fee = 25000
+    final_premium = base_premium + loading_amount + admin_fee
+    
+    # Loss ratio estimate
+    loss_ratio = 0.25 + (risk_score - 40) * 0.005 if risk_score > 40 else 0.25 - (40 - risk_score) * 0.005
+    loss_ratio = max(0.15, min(0.55, loss_ratio))
+    
+    # Plan options
+    basic_premium = int(base_premium * 0.85)
+    standard_premium = int(final_premium)
+    premium_premium = int(base_premium * 1.15 + admin_fee)
+    
+    plan_options = [
+        {
+            "name": "Basic",
+            "coverage": f"₹{int(sum_insured/total_members)/100000:.0f}L per member" if total_members > 0 else "₹2L per member",
+            "premium": basic_premium,
+            "features": ["Core hospitalization", "Day care", "Ambulance"],
+            "suited_for": "Young, healthy workforce under 35"
+        },
+        {
+            "name": "Standard",
+            "coverage": f"₹{int(sum_insured/100000)}L floater",
+            "premium": standard_premium,
+            "features": ["Above + Maternity", "OPD coverage", "Mental health", "Reproduction benefits"],
+            "suited_for": "Mixed age group, families"
+        },
+        {
+            "name": "Premium",
+            "coverage": f"₹{int(sum_insured/50000)}L floater",
+            "premium": premium_premium,
+            "features": ["Above + Dental", "Wellness benefits", "International second opinion", "Zero co-pay"],
+            "suited_for": "Executives, high-risk profile"
+        }
+    ]
+    
+    underwriting_notes = (
+        f"Underwriting analysis for {total_members} members with avg age {avg_age:.1f} years. "
+        f"Risk score of {risk_score} classified as {risk_band} risk. "
+        f"{pre_existing_conditions} pre-existing conditions identified with {loading_pct:.0f}% loading applied. "
+        f"Claims loss ratio estimated at {loss_ratio:.0%} based on demographic profile. "
+        f"Recommended plan: Standard with comprehensive coverage for this mixed demographic."
+    )
+    
+    return {
+        "key_stats": {
+            "total_members": total_members,
+            "average_age": round(avg_age, 1),
+            "age_range": f"{min_age}-{max_age}",
+            "total_sum_insured": sum_insured,
+            "premium_per_member": round(final_premium / total_members, 2) if total_members > 0 else 8500,
+            "loss_ratio": round(loss_ratio, 2),
+            "risk_band": risk_band,
+            "gender_split": genders,
+            "dependents_ratio": round(dep_ratio, 2)
+        },
+        "risk_profile": {
+            "risk_score": risk_score,
+            "risk_band": risk_band,
+            "risk_factors": risk_factors,
+            "premium_loadings": premium_loadings if premium_loadings else [{"reason": "Standard rates", "loading_percent": 0}]
+        },
+        "premium_calculation": {
+            "base_premium": int(base_premium),
+            "loading_percent": loading_pct,
+            "loading_amount": int(loading_amount),
+            "admin_fee": admin_fee,
+            "final_premium": int(final_premium),
+            "premium_per_member": round(final_premium / total_members, 2) if total_members > 0 else 8500,
+            "brokerage_percent": 10,
+            "net_premium": int(final_premium * 0.9)  # 10% brokerage
+        },
+        "plan_options": plan_options,
+        "underwriting_notes": underwriting_notes,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "confidence": 85
+    }
+
+
+def _get_default_underwriting() -> Dict:
+    """Return default underwriting summary when no data available"""
+    return {
+        "key_stats": {
+            "total_members": 0,
+            "average_age": 35.0,
+            "age_range": "25-60",
+            "total_sum_insured": 0,
+            "premium_per_member": 0,
+            "loss_ratio": 0.30,
+            "risk_band": "Medium",
+            "gender_split": {"male": 0, "female": 0},
+            "dependents_ratio": 0.0
+        },
+        "risk_profile": {
+            "risk_score": 50,
+            "risk_band": "Medium",
+            "risk_factors": [],
+            "premium_loadings": []
+        },
+        "premium_calculation": {
+            "base_premium": 0,
+            "loading_percent": 0,
+            "loading_amount": 0,
+            "admin_fee": 0,
+            "final_premium": 0,
+            "premium_per_member": 0,
+            "brokerage_percent": 10,
+            "net_premium": 0
+        },
+        "plan_options": [],
+        "underwriting_notes": "No enrollment data available for analysis.",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "confidence": 0
+    }
+
+
+async def generate_ai_underwriting_summary(enrollment_data: List[Dict], sum_insured: float, member_count: int) -> Dict:
+    """Use Gemini AI to generate underwriting intelligence"""
+    
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        api_key = os.environ.get("EMERGENT_LLM_KEY", "")
+        if not api_key:
+            raise ValueError("EMERGENT_LLM_KEY not configured")
+        
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"underwriting-{uuid.uuid4()}",
+            system_message="""You are an expert insurance underwriter specializing in Group Mediclaim Insurance (GMC). 
+Analyze enrollment data and provide comprehensive underwriting intelligence including risk assessment, premium calculations, and plan recommendations.
+Be specific, analytical, and provide actionable insights based on the data provided."""
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        # Prepare data summary for AI
+        ages = []
+        genders = {"male": 0, "female": 0}
+        dependents = 0
+        pre_existing = 0
+        total_members = len(enrollment_data)
+        
+        for member in enrollment_data:
+            dob = member.get("date_of_birth") or member.get("dob")
+            if dob:
+                try:
+                    if isinstance(dob, str):
+                        birth = datetime.strptime(dob[:10], "%Y-%m-%d")
+                    else:
+                        birth = dob
+                    age = (datetime.now() - birth).days // 365
+                    ages.append(age)
+                except:
+                    ages.append(35)
+            else:
+                ages.append(35)
+            
+            gender = str(member.get("gender", "")).lower()
+            if gender in ["male", "m"]:
+                genders["male"] += 1
+            elif gender in ["female", "f"]:
+                genders["female"] += 1
+            
+            rel = str(member.get("relationship", "")).lower()
+            if rel in ["spouse", "child", "dependent", "mother", "father", "sibling"]:
+                dependents += 1
+            
+            pec = member.get("pre_existing_conditions") or member.get("pec")
+            if pec and str(pec).lower() not in ["none", "no", "nil", ""]:
+                pre_existing += 1
+        
+        data_summary = {
+            "total_members": total_members,
+            "average_age": sum(ages) / len(ages) if ages else 35,
+            "age_range": f"{min(ages) if ages else 24}-{max(ages) if ages else 62}",
+            "senior_members_55plus": sum(1 for a in ages if a >= 55),
+            "young_members_under30": sum(1 for a in ages if a < 30),
+            "gender_split": genders,
+            "dependents_ratio": dependents / total_members if total_members > 0 else 0,
+            "pre_existing_conditions": pre_existing,
+            "total_sum_insured": sum_insured,
+            "premium_per_member_target": (sum_insured * 0.02) / total_members if total_members > 0 else 8500
+        }
+        
+        prompt = f"""Analyze this GMC enrollment data and generate comprehensive underwriting intelligence:
+
+DATA SUMMARY:
+{json.dumps(data_summary, indent=2)}
+
+MEMBER SAMPLE (first 10):
+{json.dumps(enrollment_data[:10], indent=2, default=str)}
+
+Generate a detailed underwriting analysis with:
+
+1. KEY STATISTICS:
+   - total_members, average_age, age_range
+   - total_sum_insured, premium_per_member
+   - loss_ratio (estimate based on demographics)
+   - risk_band (Low/Medium/High)
+   - gender_split, dependents_ratio
+
+2. RISK PROFILE:
+   - risk_score (0-100 scale, base 40)
+   - risk_band
+   - risk_factors: list of {{factor, impact, severity}} for each concern
+   - premium_loadings: {{reason, loading_percent}} for any extra charges
+
+3. PREMIUM CALCULATION:
+   - base_premium (calculated at ~2% of sum insured adjusted for age)
+   - loading_percent, loading_amount
+   - admin_fee (₹25,000 standard)
+   - final_premium
+   - premium_per_member
+   - brokerage_percent (10%), net_premium
+
+4. PLAN OPTIONS (3 tiers):
+   - Basic: Core coverage, ₹2L-5L per member, ~85% of calculated premium
+   - Standard: Above + maternity/OPD, ₹5L floater, ~100% calculated premium  
+   - Premium: Top coverage ₹10L+ floater, ~115% calculated premium + extras
+   Each with: name, coverage, premium, features array, suited_for
+
+5. UNDERWRITING NOTES:
+   Detailed rationale explaining pricing decisions, risk factors, and recommendations.
+
+6. CONFIDENCE SCORE (0-100):
+   Based on data quality and completeness.
+
+Return ONLY valid JSON matching this exact structure, no markdown or extra text."""
+        
+        user_message = UserMessage(text=prompt)
+        response = await chat.send_message(user_message)
+        
+        response_text = response.strip()
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+        
+        result = json.loads(response_text)
+        result["generated_at"] = datetime.now(timezone.utc).isoformat()
+        result["ai_generated"] = True
+        return result
+        
+    except Exception as e:
+        logger.warning(f"AI underwriting failed, using rule-based: {str(e)}")
+        return calculate_rule_based_underwriting(enrollment_data, sum_insured, member_count)
+
+
+@api_router.get("/cases/{case_id}/underwriting-summary")
+async def get_underwriting_summary(case_id: str, request: Request, bypass_cache: bool = False):
+    """Get AI-powered underwriting intelligence for a case"""
+    user = await get_current_user(request)
+    
+    case = await db.cases.find_one({"case_id": case_id}, {"_id": 0})
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    
+    # Return cached if available and not bypassing
+    if not bypass_cache and case.get("underwriting_summary"):
+        return {
+            **case["underwriting_summary"],
+            "cached": True
+        }
+    
+    # Get enrollment data
+    enrollment_data = case.get("corrected_data") or case.get("mapped_data") or []
+    sum_insured = case.get("sum_insured", 0)
+    member_count = case.get("member_count", len(enrollment_data))
+    
+    # Generate summary (AI or rule-based)
+    summary = await generate_ai_underwriting_summary(enrollment_data, sum_insured, member_count)
+    
+    # Store in MongoDB
+    await db.cases.update_one(
+        {"case_id": case_id},
+        {"$set": {
+            "underwriting_summary": summary,
+            "underwriting_updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    logger.info(f"Underwriting summary generated for case {case_id} by user {user['id']}")
+    
+    return {
+        **summary,
+        "cached": False
+    }
+
+
+@api_router.post("/cases/{case_id}/underwriting-summary/regenerate")
+async def regenerate_underwriting_summary(case_id: str, request: Request):
+    """Regenerate underwriting summary (bypass cache)"""
+    return await get_underwriting_summary(case_id, request, bypass_cache=True)
+
+
+@api_router.post("/cases/{case_id}/generate-quotation")
+async def generate_quotation(case_id: str, request: Request, plan_name: str = "Standard"):
+    """Generate a PDF quotation for the selected plan"""
+    user = await get_current_user(request)
+    
+    case = await db.cases.find_one({"case_id": case_id}, {"_id": 0})
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    
+    # Get or generate underwriting summary
+    uw_summary = case.get("underwriting_summary")
+    if not uw_summary:
+        enrollment_data = case.get("corrected_data") or case.get("mapped_data") or []
+        sum_insured = case.get("sum_insured", 0)
+        member_count = case.get("member_count", len(enrollment_data))
+        uw_summary = await generate_ai_underwriting_summary(enrollment_data, sum_insured, member_count)
+    
+    # Find selected plan
+    selected_plan = None
+    for plan in uw_summary.get("plan_options", []):
+        if plan["name"].lower() == plan_name.lower():
+            selected_plan = plan
+            break
+    
+    if not selected_plan and uw_summary.get("plan_options"):
+        selected_plan = uw_summary["plan_options"][1]  # Default to Standard
+    
+    if not selected_plan:
+        raise HTTPException(status_code=400, detail="No valid plan found")
+    
+    # Generate quotation
+    quotation_id = f"QT-{case_id}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
+    valid_until = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+    
+    quotation = {
+        "quotation_id": quotation_id,
+        "case_id": case_id,
+        "plan_name": selected_plan["name"],
+        "coverage": selected_plan["coverage"],
+        "premium": selected_plan["premium"],
+        "features": selected_plan["features"],
+        "suited_for": selected_plan["suited_for"],
+        "valid_until": valid_until,
+        "pdf_url": f"/api/cases/{case_id}/quotations/{quotation_id}.pdf",  # Placeholder
+        "client_name": case.get("client_name", "Unknown"),
+        "member_count": uw_summary.get("key_stats", {}).get("total_members", 0),
+        "generated_by": user["id"],
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Store quotation
+    await db.quotations.insert_one(quotation)
+    
+    logger.info(f"Quotation {quotation_id} generated for case {case_id}")
+    
+    return quotation
+
+
 # Include router
 app.include_router(api_router)
 

@@ -43,6 +43,9 @@ export const casesApi = {
   submit: (caseId) => api.post(`/cases/${caseId}/submit`),
   startReview: (caseId) => api.post(`/cases/${caseId}/review`),
   makeDecision: (caseId, decision) => api.post(`/cases/${caseId}/decision`, decision),
+  getUnderwritingSummary: (caseId) => api.get(`/cases/${caseId}/underwriting-summary`),
+  regenerateUnderwritingSummary: (caseId) => api.post(`/cases/${caseId}/underwriting-summary/regenerate`),
+  generateQuotation: (caseId, planName) => api.post(`/cases/${caseId}/generate-quotation`, { plan_name: planName }),
 };
 
 // Dashboard API
