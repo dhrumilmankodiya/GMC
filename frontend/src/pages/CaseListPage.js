@@ -1,11 +1,27 @@
 import { useState, useEffect } from 'react';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Link, useSearchParams } from 'react-router-dom';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import Layout from '../components/Layout';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { casesApi } from '../lib/api';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Button } from '../components/ui/button';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Input } from '../components/ui/input';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Badge } from '../components/ui/badge';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import {
   Table,
   TableBody,

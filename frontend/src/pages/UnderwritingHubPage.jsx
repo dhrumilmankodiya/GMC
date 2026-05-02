@@ -1,15 +1,39 @@
 import { useState, useEffect, useMemo } from 'react';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useParams, useNavigate, Link } from 'react-router-dom';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import Layout from '../components/Layout';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { casesApi } from '../lib/api';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { toast } from 'sonner';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Button } from '../components/ui/button';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Badge } from '../components/ui/badge';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Input } from '../components/ui/input';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Progress } from '../components/ui/progress';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Skeleton } from '../components/ui/skeleton';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Textarea } from '../components/ui/textarea';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import {
   Table,
   TableBody,

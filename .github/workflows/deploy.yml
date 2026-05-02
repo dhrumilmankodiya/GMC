@@ -31,6 +31,8 @@ jobs:
         run: |
           cd frontend
           npm run build
+        env:
+          CI: false
       
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0

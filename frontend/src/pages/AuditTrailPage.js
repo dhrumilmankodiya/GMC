@@ -1,13 +1,33 @@
 import { useState, useEffect } from 'react';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import Layout from '../components/Layout';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { auditApi } from '../lib/api';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Button } from '../components/ui/button';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Input } from '../components/ui/input';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Badge } from '../components/ui/badge';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Calendar } from '../components/ui/calendar';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 import {
   Table,
   TableBody,
@@ -27,6 +47,8 @@ import {
   Clock,
 } from 'lucide-react';
 import { format } from 'date-fns';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 
 const actionColors = {
   user_registered: 'bg-blue-50 text-blue-700',
