@@ -10,30 +10,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      
+
       - name: Install dependencies
         run: |
           cd frontend
           npm install --legacy-peer-deps
-          # Fix ajv version if needed
           npm install ajv@^8.12.0 --legacy-peer-deps
         env:
           NPM_CONFIG_LEGACY_PEER_DEPS: true
-      
+
       - name: Build
         run: |
           cd frontend
           npm run build
         env:
           CI: false
-      
+
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0
         with:
@@ -41,6 +40,8 @@ jobs:
           production-branch: main
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Deploy ${{ github.ref_name }} - ${{ github.sha }}"
+          netlify-config-path: ./netlify.toml
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         timeout-minutes: 10
