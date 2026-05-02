@@ -3,7 +3,8 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+// API calls use relative URLs — same origin, nginx proxies /api to backend
+const API_BASE = '/api';
 
 // Configure axios defaults - use cookies for auth
 axios.defaults.withCredentials = true;
@@ -23,7 +24,7 @@ export function AuthProvider({ children }) {
 
   const checkAuth = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/auth/me`, { withCredentials: true });
+      const { data } = await axios.get(`${API_BASE}/auth/me`, { withCredentials: true });
       setUser(data);
     } catch {
       setUser(false);
@@ -39,7 +40,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const { data } = await axios.post(
-        `${API_URL}/api/auth/login`,
+        `${API_BASE}/auth/login`,
         { email, password },
         { withCredentials: true }
       );
@@ -56,7 +57,7 @@ export function AuthProvider({ children }) {
   const register = async (email, password, name, role = 'agent') => {
     try {
       const { data } = await axios.post(
-        `${API_URL}/api/auth/register`,
+        `${API_BASE}/auth/register`,
         { email, password, name, role },
         { withCredentials: true }
       );
@@ -72,7 +73,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await axios.post(`${API_URL}/api/auth/logout`, {}, { withCredentials: true });
+      await axios.post(`${API_BASE}/auth/logout`, {}, { withCredentials: true });
     } catch {
       // Ignore errors
     } finally {
@@ -82,7 +83,7 @@ export function AuthProvider({ children }) {
 
   const forgotPassword = async (email) => {
     try {
-      const { data } = await axios.post(`${API_URL}/api/auth/forgot-password`, { email });
+      const { data } = await axios.post(`${API_BASE}/auth/forgot-password`, { email });
       return { success: true, data };
     } catch (e) {
       return { 
@@ -94,7 +95,7 @@ export function AuthProvider({ children }) {
 
   const resetPassword = async (token, newPassword) => {
     try {
-      const { data } = await axios.post(`${API_URL}/api/auth/reset-password`, { 
+      const { data } = await axios.post(`${API_BASE}/auth/reset-password`, { 
         token, 
         new_password: newPassword 
       });
